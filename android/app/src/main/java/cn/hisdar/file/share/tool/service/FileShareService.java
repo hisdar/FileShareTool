@@ -1,5 +1,7 @@
 package cn.hisdar.file.share.tool.service;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -11,9 +13,10 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import android.os.SystemClock;
 import android.util.Log;
 
-import cn.hisdar.file.share.tool.master.searcher.MasterSearcher;
 
 public class FileShareService extends Service {
 
@@ -70,8 +73,24 @@ public class FileShareService extends Service {
 
         FileShareSocketServer socketServer = FileShareSocketServer.getInstance();
         socketServer.startServer();
-
+        flags = START_STICKY;
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Log.i(TAG, "onTaskRemoved");
+        Intent restartService = new Intent(getApplicationContext(), this.getClass());
+        restartService.setPackage(getPackageName());
+        PendingIntent restartServicePI = PendingIntent.getService(
+                getApplicationContext(),
+                1,
+                restartService,
+                PendingIntent.FLAG_ONE_SHOT);
+        AlarmManager alarmService = (AlarmManager)getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        alarmService.set(AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 1000,
+                restartServicePI);
     }
 
     public class ServiceBroadcastReceiver  extends BroadcastReceiver {

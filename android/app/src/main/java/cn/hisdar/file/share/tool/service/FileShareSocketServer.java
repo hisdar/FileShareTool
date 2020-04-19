@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 
 public class FileShareSocketServer extends Thread {
 
@@ -53,26 +54,29 @@ public class FileShareSocketServer extends Thread {
 
     public void run() {
         isServerRunning = true;
-        ServerSocket serverSocket = null;
+        ServerSocket commandServerSocket = null;
+        ServerSocket dataServerSocket = null;
         try {
-            serverSocket = new ServerSocket(5299);
+            commandServerSocket = new ServerSocket(5299);
+            dataServerSocket = new ServerSocket(5300);
         } catch (IOException e) {
-            serverSocket = null;
+            commandServerSocket = null;
             e.printStackTrace();
         }
 
-        while (!isExit && serverSocket != null) {
-            Socket clientSocket = null;
+        while (!isExit && commandServerSocket != null) {
+            Socket commandClientSocket = null;
+            Socket dataClientSocket = null;
             try {
                 Log.i(TAG, "wait for socket connect ...");
-                clientSocket = serverSocket.accept();
+                commandClientSocket = commandServerSocket.accept();
+                dataClientSocket = dataServerSocket.accept();
             } catch (IOException e) {
                 e.printStackTrace();
                 continue;
             }
 
-            FileShareSocket fileShareSocket = new FileShareSocket(clientSocket);
-
+            FileShareSocket fileShareSocket = new FileShareSocket(commandClientSocket, dataClientSocket);
         }
 
         isServerRunning = false;

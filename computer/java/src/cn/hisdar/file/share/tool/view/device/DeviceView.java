@@ -1,47 +1,98 @@
 package cn.hisdar.file.share.tool.view.device;
 
 import java.awt.BorderLayout;
-import java.util.ArrayList;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
+import javax.swing.JComboBox;
 import javax.swing.JPanel;
 
-import cn.hisdar.file.share.tool.server.DeviceStateListener;
-import cn.hisdar.file.share.tool.server.SocketServerSearcher;
+import cn.hisdar.file.share.tool.server.Device;
+import cn.hisdar.file.share.tool.server.DeviceStateAdapter;
+import cn.hisdar.file.share.tool.server.DeviceSearcher;
+import cn.hisdar.lib.log.HLog;
 import cn.hisdar.lib.ui.TitlePanel;
 
-public class DeviceView extends JPanel implements DeviceStateListener {
+public class DeviceView extends JPanel implements ItemListener {
+
+	private static final long serialVersionUID = 1L;
 
 	private TitlePanel titlePanel;
-	private ArrayList<String> onlineDevices;
+	private JPanel deviceInforPanel;
+	private JComboBox<String> deviceList;
+	private HashMap<Integer, Device> deviceMap;
+	private DeviceStateEventHandler deviceStateEventHandler;
 	
 	public DeviceView() {
-		titlePanel = new TitlePanel("在线设备");
+		deviceMap = new HashMap<>();
+		
+		titlePanel = new TitlePanel("设备/文件");
+		deviceInforPanel = new JPanel();
+		deviceInforPanel.setLayout(new BorderLayout());
+		
+		deviceList = new JComboBox<>();
+		deviceList.addItemListener(this);
+		deviceInforPanel.add(deviceList, BorderLayout.NORTH);
 		
 		setLayout(new BorderLayout());
 		add(titlePanel, BorderLayout.NORTH);
-		SocketServerSearcher serverSearcher = SocketServerSearcher.getInstance();
-		serverSearcher.addDeviceStateListener(this);
+		add(deviceInforPanel, BorderLayout.CENTER);
+				
+		DeviceSearcher serverSearcher = DeviceSearcher.getInstance();
+		deviceStateEventHandler = new DeviceStateEventHandler();
+		serverSearcher.addDeviceStateListener(deviceStateEventHandler);
 	}
-
-	@Override
-	public void deviceOnline(String ipAddress) {
-		for (int i = 0; i < onlineDevices.size(); i++) {
-			if (onlineDevices.get(i).equals(ipAddress)) {
-				return;
-			}
-		}
-		
-		onlineDevices.add(ipAddress);
-	}
-
-	@Override
-	public void deviceOffline(String ipAddress) {
-		for (int i = 0; i < onlineDevices.size(); i++) {
-			if (onlineDevices.get(i).equals(ipAddress)) {
-				onlineDevices.remove(i);
-				return;
+	
+	private void updateDevicesList(Device dev, boolean online) {
+		if (online) {
+			HLog.il("device online\n");
+			deviceMap.put(deviceList.getItemCount(), dev);
+			deviceList.addItem(dev.getName());
+			
+		} else {
+			HLog.il("device offline\n");
+			Iterator<Entry<Integer, Device>> iterator = deviceMap.entrySet().iterator();
+			while (iterator.hasNext()) {
+				Map.Entry<Integer, Device> entry = (Map.Entry<Integer, Device>)iterator.next();
+				if (entry.getValue() == dev) {
+					Integer index = (Integer)entry.getKey();
+					deviceList.remove(index);
+					deviceMap.remove(index);
+					break;
+				}
 			}
 		}
 	}
 	
+	private class DeviceStateEventHandler extends DeviceStateAdapter {
+		@Override
+		public void deviceOnline(Device dev) {
+			updateDevicesList(dev, true);
+		}
+
+		@Override
+		public void deviceOffline(Device dev) {
+			HLog.il("call updateDevicesList");
+			updateDevicesList(dev, false);
+		}
+	}
+
+	@Override
+	public void itemStateChanged(ItemEvent e) {
+		if (e.getSource() == deviceList) {
+			if (e.getStateChange() == ItemEvent.SELECTED) {
+				Integer index = deviceList.getSelectedIndex();
+				HLog.il("select device:" + e.getItem().toString() + ", index:" + index);
+				Device device = deviceMap.get(index);
+				if (device == null) {
+					HLog.il("device is null");
+				}
+				device.connect();
+			}
+		}
+	}
 }

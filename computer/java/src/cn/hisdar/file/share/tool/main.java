@@ -3,10 +3,13 @@ package cn.hisdar.file.share.tool;
 import javax.swing.UIManager;
 
 import cn.hisdar.file.share.tool.view.MainFrame;
+import cn.hisdar.lib.log.HLog;
 
 public class main {
 
 	public static void main(String[] args) {
+		
+		HLog.enableCmdLog();
 		try {
 
 			//UIManager.setLookAndFeel("com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel");//Nimbus风格，jdk6 update10版本以后的才会出现

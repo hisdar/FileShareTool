@@ -7,9 +7,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
+import java.io.File;
 
 import cn.hisdar.file.share.tool.service.FileShareService;
 
@@ -35,6 +38,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View v) {
         if (v.getId() == searchButton.getId()) {
+
+            File file = Environment.getExternalStorageDirectory();
+            File[] childFiles = file.listFiles();
+            if (childFiles != null) {
+                for (int i = 0; i < childFiles.length; i++) {
+                    Log.i(TAG, childFiles[i].getPath() + "\n");
+                }
+            } else {
+                Log.i(TAG, "get child files fail");
+            }
+
             Log.i(TAG, "send message:" + FileShareService.ACTION_GET_MASTER_LIST);
             Intent intent = new Intent();
             intent.setAction(FileShareService.ACTION_GET_MASTER_LIST);

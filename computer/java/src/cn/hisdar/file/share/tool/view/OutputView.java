@@ -11,6 +11,10 @@ import cn.hisdar.lib.log.HLogInterface;
 
 public class OutputView extends JPanel implements HLogInterface {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JTextArea logArea;
 	public OutputView() {
 		logArea = new JTextArea();
@@ -21,17 +25,26 @@ public class OutputView extends JPanel implements HLogInterface {
 	}
 	@Override
 	public void info(String log) {
+		if (logArea.getLineCount() > 1000) {
+			logArea.setText("");
+		}
 		logArea.append(log);
 		logArea.setCaretPosition(logArea.getDocument().getLength());
 	}
 	@Override
 	public void error(String log) {
+		if (logArea.getLineCount() > 1000) {
+			logArea.setText("");
+		}
 		logArea.append(log);
 		logArea.setCaretPosition(logArea.getDocument().getLength());
 		
 	}
 	@Override
 	public void debug(String log) {
+		if (logArea.getLineCount() > 1000) {
+			logArea.setText("");
+		}
 		logArea.append(log);
 		logArea.setCaretPosition(logArea.getDocument().getLength());
 	}

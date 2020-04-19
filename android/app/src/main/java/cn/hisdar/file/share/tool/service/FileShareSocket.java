@@ -1,13 +1,20 @@
 package cn.hisdar.file.share.tool.service;
 
+import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
-import cn.hisdar.file.share.tool.command.CommandUtil;
+import cn.hisdar.file.share.tool.command.Command;
+import cn.hisdar.file.share.tool.command.CommandDispatcher;
 
 public class FileShareSocket {
 
@@ -15,18 +22,20 @@ public class FileShareSocket {
 
     private boolean isExit;
 
-    private Socket socket;
+    private Socket commandSocket;
+    private Socket dataSocket;
     private InputStream in;
-    private OutputStream out;
+    private OutputStream commandOut;
+    private OutputStream dataOut;
     private FileShareSocketWorker worker;
 
-
-
-    public FileShareSocket(Socket socket) {
-        socket = socket;
+    public FileShareSocket(Socket commandSocket, Socket dataSocket) {
+        this.commandSocket = commandSocket;
+        this.dataSocket = dataSocket;
 
         in = null;
-        out = null;
+        dataOut = null;
+        commandOut = null;
         isExit = false;
         worker = new FileShareSocketWorker();
         worker.start();
@@ -36,82 +45,59 @@ public class FileShareSocket {
         isExit = true;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     private void FileShareSocketWorkFunc() {
-        if (socket == null) {
+        if (commandSocket == null) {
             return;
         }
 
         try {
-            in = socket.getInputStream();
-            out = socket.getOutputStream();
+            in = commandSocket.getInputStream();
+            commandOut = commandSocket.getOutputStream();
+            dataOut = dataSocket.getOutputStream();
         } catch (IOException e) {
             e.printStackTrace();
             return;
         }
 
-        byte[] readBuffer = new byte[1024];
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        String lineString = null;
         while (!isExit) {
             try {
-                // read command head
-                int commandHead = in.read();
-                if (commandHead == -1) {
+                lineString = reader.readLine();
+                if (lineString == null) {
                     continue;
                 }
 
-                if (readBuffer[0] != 0x1E) {
+                if (!lineString.trim().equals("<HisdarSocketCommand>")) {
+                    Log.i(TAG, "" + lineString);
                     continue;
                 }
 
-                // read command type:
-                int readLen = in.read(readBuffer, 0, CommandUtil.COMMAND_TYPE_SIZE);
-                if (readLen != CommandUtil.COMMAND_TYPE_SIZE) {
-                    continue;
-                }
-                int commandType = CommandUtil.decodeInt(readBuffer);
-
-                // read command
-                readLen = in.read(readBuffer, 0, CommandUtil.COMMAND_SIZE);
-                if (readLen != CommandUtil.COMMAND_SIZE) {
-                    continue;
-                }
-                int command = CommandUtil.decodeInt(readBuffer);
-
-                // read data type
-                int dataType = in.read();
-                if (dataType == -1) {
-                    continue;
-                }
-
-                // read data length
-                readLen = in.read(readBuffer, 0, CommandUtil.DATA_LENGTH_SIZE);
-                if (readLen != CommandUtil.DATA_LENGTH_SIZE) {
-                    continue;
-                }
-                int dataLen = CommandUtil.decodeInt(readBuffer);
-
-                // read data
-                while (dataLen > 0) {
-                    int dataReadLen = dataLen;
-                    if (dataLen >= 1024) {
-                        dataReadLen = 1024;
+                StringBuffer commandStringBuffer = new StringBuffer();
+                while (true) {
+                    lineString = reader.readLine();
+                    if (lineString.trim().equals("</HisdarSocketCommand>")) {
+                        break;
                     }
 
-                    readLen = in.read(readBuffer, 0, dataReadLen);
-                    dataLen -= readLen;
+                    commandStringBuffer.append(lineString);
+                    commandStringBuffer.append("\n");
                 }
 
-                Log.i(TAG, "commandType:" + commandType +
-                                ", command:" + command +
-                                ", dataType:" + dataType +
-                                ", dataLen:" + dataLen);
+                Command command = new Command();
+                command.parseCommand(commandStringBuffer);
+                CommandDispatcher.getInstance().dispatch(command, commandOut, dataOut);
             } catch (IOException e) {
                 e.printStackTrace();
-                continue;
+                break;
             }
         }
+
     }
 
     private class FileShareSocketWorker extends Thread {
+        @RequiresApi(api = Build.VERSION_CODES.KITKAT)
         public void run() {
             FileShareSocketWorkFunc();
         }
