@@ -33,6 +33,8 @@ public class MainFrame extends JFrame {
 		initToolBar();
 		addressBar = new AddressBar();
 		explorerView = new ExplorerView();
+		explorerView.getExplorerAddressListenerManager().addListener(addressBar);
+		addressBar.addAddressBarListener(explorerView.getAddressBarListener());
 
 		HSplitPane deviceSplitPane = new HSplitPane(HSplitPane.VERTICAL_SPLIT);
 		deviceSplitPane.setDividerLocation(0.15f);

@@ -12,14 +12,18 @@ import java.rmi.Remote;
 import java.util.ArrayList;
 
 import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 
 import com.sun.corba.se.spi.orbutil.fsm.Action;
+import com.sun.prism.Image;
 
+import cn.hisdar.file.share.tool.Global;
 import cn.hisdar.file.share.tool.command.RemoteFile;
+import cn.hisdar.lib.log.HLog;
 import jdk.internal.dynalink.beans.StaticClass;
 
 public class ExplorerItemPanel extends JPanel {
@@ -46,7 +50,7 @@ public class ExplorerItemPanel extends JPanel {
 	
 	private JPopupMenu popupMenu;
 	private JMenuItem openMenuItem;
-	private JMenuItem postAsMenuItem;
+	private JMenuItem postMenuItem;
 	private JMenuItem saveAsMenuItem;
 	private JMenuItem deleteMenuItem;
 	private JMenuItem renameMenuItem;
@@ -68,7 +72,7 @@ public class ExplorerItemPanel extends JPanel {
 		
 		popupMenu = new JPopupMenu();
 		openMenuItem = new JMenuItem("打开");
-		postAsMenuItem = new JMenuItem("粘贴");
+		postMenuItem = new JMenuItem("粘贴");
 		saveAsMenuItem = new JMenuItem("另存为...");
 		deleteMenuItem = new JMenuItem("删除");
 		renameMenuItem = new JMenuItem("重命名");
@@ -77,7 +81,7 @@ public class ExplorerItemPanel extends JPanel {
 		createDirectoryMenuItem = new JMenuItem("创建文件夹");
 		
 		openMenuItem.addActionListener(popMenuItemEventHandler);
-		postAsMenuItem.addActionListener(popMenuItemEventHandler);
+		postMenuItem.addActionListener(popMenuItemEventHandler);
 		saveAsMenuItem.addActionListener(popMenuItemEventHandler);
 		deleteMenuItem.addActionListener(popMenuItemEventHandler);
 		moveMenuItem.addActionListener(popMenuItemEventHandler);
@@ -85,13 +89,15 @@ public class ExplorerItemPanel extends JPanel {
 		createDirectoryMenuItem.addActionListener(popMenuItemEventHandler);
 		
 		popupMenu.add(openMenuItem);
-		popupMenu.add(postAsMenuItem);
+		popupMenu.add(postMenuItem);
 		popupMenu.add(saveAsMenuItem);
 		popupMenu.add(deleteMenuItem);
 		popupMenu.add(renameMenuItem);
 		popupMenu.add(moveMenuItem);
 		popupMenu.add(createFileMenuItem);
 		popupMenu.add(createDirectoryMenuItem);
+		
+		setBorder(null);
 	}
 	
 	public ExplorerItemPanel(String[] titles) {
@@ -125,13 +131,12 @@ public class ExplorerItemPanel extends JPanel {
 
 		for (int i = 0; i < itemCount; i++) {
 			JLabel label = new JLabel();
+			label.setFont(Global.getDefaultFont());
 			label.addMouseListener(mouseEventHandler);
 			label.addMouseMotionListener(mouseEventHandler);
 			titleLabels.add(label);
 			add(label);
 		}
-		
-		setPreferredSize(new Dimension(0, 30));
 	}
 
 	public void addRemoteFileEventListener(RemoteFileEventListener l) {
@@ -190,7 +195,6 @@ public class ExplorerItemPanel extends JPanel {
 			int componentWidth = titleLableSizeArray[i];
 			label.setBounds(startIndexX, 0, componentWidth, getHeight());
 			label.setPreferredSize(new Dimension(componentWidth, getHeight()));
-			
 			startIndexX = startIndexX + componentWidth + dividerSize;
 		}
 		
@@ -207,6 +211,7 @@ public class ExplorerItemPanel extends JPanel {
 		}
 
 		private void handleRightButtonEvent(MouseEvent e) {
+			
 			popupMenu.show(e.getComponent(), e.getX(), e.getY());
 		}
 
@@ -244,8 +249,21 @@ public class ExplorerItemPanel extends JPanel {
 		public void actionPerformed(ActionEvent e) {
 			if (e.getSource() == openMenuItem) {
 				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_OPEN);
+			} else if (e.getSource() == postMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_POST);
+			} else if (e.getSource() == saveAsMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_SAVE_AS);
+			} else if (e.getSource() == deleteMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_DELETE);
+			} else if (e.getSource() == renameMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_RENAME);
+			} else if (e.getSource() == moveMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_MOVE);
+			} else if (e.getSource() == createFileMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_CREATE_FILE);
+			} else if (e.getSource() == createDirectoryMenuItem) {
+				notifyRemoteFileEvent(file, REMOTE_FILE_EVENT_CREATE_DIRECTORY);
 			}
 		}
-		
 	}
 }

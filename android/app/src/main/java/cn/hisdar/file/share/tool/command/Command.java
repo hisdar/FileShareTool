@@ -18,6 +18,7 @@ public class Command {
     public static String COMMAND_GET_DEVICE_INFO = "GetDeviceInfo";
     public static String COMMAND_GET_CHILD_FILES = "GetChildFiles";
     public static String COMMAND_GET_FILE        = "GetFile";
+    public static String COMMAND_PUT_FILE        = "PutFile";
 
     private String TAG = "FileShareCommand";
     private HashMap<String, String> cmdItems;
@@ -72,17 +73,17 @@ public class Command {
     }
 
 
-    protected String addCommandHeadAndTail(String commandData) {
+    public String addCommandHeadAndTail(String commandData) {
         String result = "<HisdarSocketCommand>\n" + commandData + "</HisdarSocketCommand>\n";
         return result;
     }
 
-    protected String getFormatedCommandType(String commandType) {
+    public String getFormatedCommandType(String commandType) {
         String result = "<CommandType>" + commandType + "</CommandType>\n";
         return result;
     }
 
-    protected String getFormatedCommand(String command) {
+    public String getFormatedCommand(String command) {
         String result = "<Command>" + command + "</Command>\n";
         return result;
     }

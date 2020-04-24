@@ -72,7 +72,7 @@ public class FileShareService extends Service {
         Log.i(TAG, "onStartCommand finished");
 
         FileShareSocketServer socketServer = FileShareSocketServer.getInstance();
-        socketServer.startServer();
+        socketServer.startServer(getApplicationContext());
         flags = START_STICKY;
         return super.onStartCommand(intent, flags, startId);
     }

@@ -36,6 +36,10 @@ public class RemoteFile {
 	public void setName(String name) {
 		this.name = name;
 	}
+	
+	public String getParentPath() {
+		return parent;
+	}
 
 	public String getFileType() {
 		return fileType;

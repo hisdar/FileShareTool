@@ -1,7 +1,6 @@
 package cn.hisdar.file.share.tool.command;
 
-import cn.hisdar.file.share.tool.server.Device;
-import cn.hisdar.lib.log.HLog;
+import com.sun.jndi.toolkit.ctx.StringHeadTail;
 
 public class GetDeviceInfoCommand extends Command {
 
@@ -18,16 +17,11 @@ public class GetDeviceInfoCommand extends Command {
 	}
 	
 	@Override
-	public int exec(Device dev) {
-		
+	public String getCommandString() {
 		String command = "";
 		command += getFormatedCommandType(COMMAND_TYPE_REQUEST);
 		command += getFormatedCommand(COMMAND_GET_DEVICE_INFO);
 		command = addCommandHeadAndTail(command);
-		
-		Command response = dev.writeAndWaitResponse(command.getBytes());
-		String deviceInfo = response.getCommandItem("DeviceInfo");
-		parseCommand(new StringBuffer(deviceInfo));
-		return 0;
+		return command;
 	}
 }

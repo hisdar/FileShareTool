@@ -11,38 +11,26 @@ import cn.hisdar.lib.log.HLog;
 public class GetChildFilesCommand extends Command {
 	
 	private String directoryPath;
-	private ArrayList<RemoteFile> childFileList;
 	
 	public GetChildFilesCommand(String path) {
-		childFileList = new ArrayList<>();
 		directoryPath = path;
 	}
 	
-	/***
-	 * Execute function exec first befor run getChildFileList
-	 * @return
-	 */
-	public ArrayList<RemoteFile> getChildFileList() {
-		return childFileList;
-	}
-	
-	public int exec(Device dev) {
+	public String getCommandString() {
 		String command = "";
 		command += getFormatedCommandType(COMMAND_TYPE_REQUEST);
 		command += getFormatedCommand(COMMAND_GET_CHILD_FILES);
 		command += "<DirectoryPath>" + directoryPath + "</DirectoryPath>\n";
 		command = addCommandHeadAndTail(command);
-		
-		Command response = dev.writeAndWaitResponse(command.getBytes());
-		String childFiles = response.getCommandItem("ChildFiles");
-		parseChileFiles(childFiles);
-		
-		return 0;
+		return command;
 	}
 	
-	private void parseChileFiles(String src) {
+	public ArrayList<RemoteFile> parseChileFiles(Command result) {
+		ArrayList<RemoteFile> childFileList = new ArrayList<>();
+		String childFiles = result.getCommandItem("ChildFiles");
+		
 		Command childFilesPaser = new Command();
-		childFilesPaser.parseCommand(new StringBuffer(src));
+		childFilesPaser.parseCommand(new StringBuffer(childFiles));
 		HashMap<String, String> childFilesMap = childFilesPaser.getCmdItems();
 		Iterator<Entry<String, String>> iter = childFilesMap.entrySet().iterator();
 		while (iter.hasNext()) {
@@ -53,6 +41,8 @@ public class GetChildFilesCommand extends Command {
 			parseRemoteFileAttr(file, val);
 			childFileList.add(file);
 		}
+		
+		return childFileList;
 	}
 	
 	private void parseRemoteFileAttr(RemoteFile file, String src) {

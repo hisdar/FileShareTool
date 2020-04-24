@@ -1,9 +1,9 @@
 package cn.hisdar.file.share.tool.command;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
-import cn.hisdar.file.share.tool.server.Device;
 import cn.hisdar.lib.log.HLog;
 
 public class Command {
@@ -17,6 +17,7 @@ public class Command {
 	public static String COMMAND_GET_DEVICE_INFO = "GetDeviceInfo";
 	public static String COMMAND_GET_CHILD_FILES = "GetChildFiles";
 	public static String COMMAND_GET_FILE        = "GetFile";
+	public static String COMMAND_PUT_FILE        = "PutFile";
 	
 	public Command() {
 		cmdItems = new HashMap<>();
@@ -93,7 +94,24 @@ public class Command {
     	return getCommandItem("Command");
     }
     
-	public int exec(Device dev) {
-		return 0;
+	public String getCommandString() {
+		return null;
 	}
+
+	@Override
+	public String toString() {
+		
+		String result = "";
+		Iterator<Entry<String, String>> iter = cmdItems.entrySet().iterator();
+		while (iter.hasNext()) {
+			HashMap.Entry<String, String> entry = (HashMap.Entry<String, String>) iter.next();
+			String key = entry.getKey();
+			String val = entry.getValue();
+			result = result + key + ":" + val + "\n";
+		}
+		
+		return result;
+	}
+	
+	
 }

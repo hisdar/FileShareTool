@@ -8,14 +8,20 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import cn.hisdar.file.share.tool.Global;
 import cn.hisdar.file.share.tool.server.Device;
+import cn.hisdar.file.share.tool.server.DeviceInformation;
 import cn.hisdar.file.share.tool.server.DeviceStateAdapter;
 import cn.hisdar.file.share.tool.server.DeviceSearcher;
 import cn.hisdar.lib.log.HLog;
+import cn.hisdar.lib.ui.HLinearPanel;
 import cn.hisdar.lib.ui.TitlePanel;
+import jdk.internal.org.objectweb.asm.tree.IntInsnNode;
 
 public class DeviceView extends JPanel implements ItemListener {
 
@@ -23,6 +29,7 @@ public class DeviceView extends JPanel implements ItemListener {
 
 	private TitlePanel titlePanel;
 	private JPanel deviceInforPanel;
+	private HLinearPanel quickAccessPanel;
 	private JComboBox<String> deviceList;
 	private HashMap<Integer, Device> deviceMap;
 	private DeviceStateEventHandler deviceStateEventHandler;
@@ -35,13 +42,18 @@ public class DeviceView extends JPanel implements ItemListener {
 		deviceInforPanel.setLayout(new BorderLayout());
 		
 		deviceList = new JComboBox<>();
+		deviceList.setFont(Global.getDefaultFont());
 		deviceList.addItemListener(this);
 		deviceInforPanel.add(deviceList, BorderLayout.NORTH);
 		
 		setLayout(new BorderLayout());
 		add(titlePanel, BorderLayout.NORTH);
-		add(deviceInforPanel, BorderLayout.CENTER);
+		//add(deviceInforPanel, BorderLayout.NORTH);
 				
+		quickAccessPanel = new HLinearPanel();
+		quickAccessPanel.add(deviceInforPanel);
+		add(quickAccessPanel, BorderLayout.CENTER);
+		
 		DeviceSearcher serverSearcher = DeviceSearcher.getInstance();
 		deviceStateEventHandler = new DeviceStateEventHandler();
 		serverSearcher.addDeviceStateListener(deviceStateEventHandler);
@@ -51,7 +63,7 @@ public class DeviceView extends JPanel implements ItemListener {
 		if (online) {
 			HLog.il("device online\n");
 			deviceMap.put(deviceList.getItemCount(), dev);
-			deviceList.addItem(dev.getName());
+			deviceList.addItem(dev.getDeviceInformation().getDeviceName());
 			
 		} else {
 			HLog.il("device offline\n");
@@ -90,8 +102,19 @@ public class DeviceView extends JPanel implements ItemListener {
 				Device device = deviceMap.get(index);
 				if (device == null) {
 					HLog.il("device is null");
+					return;
 				}
 				device.connect();
+				DeviceInformation deviceInformation = device.getDeviceInformation();
+				String innerSdcardPath = deviceInformation.getInnerSDCardPath();
+				JButton innerSdcardButton = new JButton("ÄÚÖÃSD¿¨");
+				innerSdcardButton.setFont(Global.getDefaultFont());
+				quickAccessPanel.add(innerSdcardButton);
+				for (int i = 0; i < deviceInformation.getExternalSdcardCount(); i++) {
+					JButton externalSdcardButton = new JButton("ÍâÖÃSD¿¨-" + i);
+					externalSdcardButton.setFont(Global.getDefaultFont());
+					quickAccessPanel.add(externalSdcardButton);
+				}
 			}
 		}
 	}

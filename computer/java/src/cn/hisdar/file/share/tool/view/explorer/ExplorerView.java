@@ -1,86 +1,62 @@
 package cn.hisdar.file.share.tool.view.explorer;
 
 import java.awt.BorderLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 
-import cn.hisdar.file.share.tool.command.GetChildFilesCommand;
-import cn.hisdar.file.share.tool.command.GetDeviceInfoCommand;
-import cn.hisdar.file.share.tool.command.GetFileCommand;
+import com.sun.xml.internal.ws.wsdl.writer.document.http.Address;
+
 import cn.hisdar.file.share.tool.command.RemoteFile;
 import cn.hisdar.file.share.tool.server.Device;
-import cn.hisdar.file.share.tool.server.DeviceStateListener;
 import cn.hisdar.file.share.tool.server.DeviceSearcher;
+import cn.hisdar.file.share.tool.server.DeviceStateListener;
 import cn.hisdar.lib.log.HLog;
 import cn.hisdar.lib.ui.HLinearPanel;
 
-public class ExplorerView extends JPanel implements DeviceStateListener, RemoteFileEventListener {
+public class ExplorerView extends JPanel implements RemoteFileEventListener {
 
 	private static final long serialVersionUID = 1L;
 	
 	private Device device;
-	private HLinearPanel fileInforPanel;
+	private ExplorerItemView explorerItemView;
 	private ExplorerTitlePanel explorerTitlePanel;
-	private ArrayList<ExplorerItemPanel> explorerItemPanels;
 	private String[] titles = {"名称", "修改日期", "类型", "大小"};
+	
+	private ExplorerAddressListenerManager addressListenerManager;
+	private AddressBarEventHandler addressBarEventHandler;
+	private DeviceStateEventHandler deviceStateEventHandler;
 
 	private FileSystemService fileSystemService;
 	
 	public ExplorerView() {
 		device = null;
+		deviceStateEventHandler = new DeviceStateEventHandler();
+		addressBarEventHandler = new AddressBarEventHandler();
+		addressListenerManager = new ExplorerAddressListenerManager();
 		fileSystemService = new FileSystemService();
 		fileSystemService.start();
 
-		fileInforPanel = new HLinearPanel();
 		setLayout(new BorderLayout());
 		
 		explorerTitlePanel = new ExplorerTitlePanel(titles);
-		explorerItemPanels = new ArrayList<>();
-
-		JScrollPane viewScrollPanel = new JScrollPane(fileInforPanel);
-		JScrollBar verticalBar = viewScrollPanel.getVerticalScrollBar();
-		verticalBar.setUnitIncrement(10);
+		explorerItemView = new ExplorerItemView();
 		
 		add(explorerTitlePanel, BorderLayout.NORTH);
-		add(viewScrollPanel, BorderLayout.CENTER);
-		DeviceSearcher.getInstance().addDeviceStateListener(this);
-	}
-	
-	@Override
-	public void deviceOnline(Device dev) {
-		
-	}
-
-	@Override
-	public void deviceOffline(Device dev) {
-		
-	}
-
-	@Override
-	public void deviceConnected(Device dev) {
-		HLog.il("deviceConnected");
-		if (device == null) {
-			device = dev;
-			
-			InnerCommand command = new InnerCommand();
-			command.command = InnerCommand.COMMAND_SHOW_SDCARDS;
-			fileSystemService.addCommand(command);
-			fileSystemService.interrupt();
-		}
-	}
-
-	@Override
-	public void deviceDisconnected(Device dev) {
-		if (device == dev) {
-			clearView();
-			device = null;
-		}
+		add(explorerItemView, BorderLayout.CENTER);
+		DeviceSearcher.getInstance().addDeviceStateListener(deviceStateEventHandler);
 	}
 	
 	private class InnerCommand {
@@ -124,19 +100,55 @@ public class ExplorerView extends JPanel implements DeviceStateListener, RemoteF
 		}
 	}
 	
+	private class AddressBarEventHandler implements AddressBarListener {
+		@Override
+		public void updateAddress(String path) {
+			showFilesInDirectory(path);
+		}
+	}
+	
+	private class DeviceStateEventHandler implements DeviceStateListener {
+
+		@Override
+		public void deviceOnline(Device dev) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void deviceOffline(Device dev) {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		@Override
+		public void deviceConnected(Device dev) {
+			HLog.il("deviceConnected");
+			if (device == null) {
+				device = dev;
+				
+				InnerCommand command = new InnerCommand();
+				command.command = InnerCommand.COMMAND_SHOW_SDCARDS;
+				fileSystemService.addCommand(command);
+				fileSystemService.interrupt();
+			}
+		}
+
+		@Override
+		public void deviceDisconnected(Device dev) {
+			if (device == dev) {
+				clearView();
+				device = null;
+			}
+		}
+	}
+	
 	private void showSDCardInfo() {
 		if (device == null) {
 			return;
 		}
 		
-		HLog.il("getSDCardInfo....");
-		GetDeviceInfoCommand devInfor = new GetDeviceInfoCommand();
-		int ret = devInfor.exec(device);
-		if (ret != 0) {
-			return;
-		}
-		
-		String sdcardPath = devInfor.getInnerSdcardPath();
+		String sdcardPath = device.getDeviceInformation().getInnerSDCardPath();
 		if (sdcardPath != null) {
 			showFilesInDirectory(sdcardPath);
 		}
@@ -192,28 +204,20 @@ public class ExplorerView extends JPanel implements DeviceStateListener, RemoteF
 	}
 
 	private void clearView() {
-		fileInforPanel.removeAllChilds();
-		for (int i = explorerItemPanels.size(); i > 0 ; i--) {
-			explorerItemPanels.get(i - 1).removeRemoteFileEventListener(this);
-			explorerItemPanels.remove(i - 1);
-		}
+		explorerItemView.removeAllExplorerItem();
 	}
 	
 	private void showFilesInDirectory(String path) {
-		
-		GetChildFilesCommand getChildFilesCommand = new GetChildFilesCommand(path);
-		int ret = getChildFilesCommand.exec(device);
-		if (ret != 0) {
+
+		if (device == null) {
+			HLog.il("device is null");
 			return;
 		}
-		
+
 		clearView();
+		addressListenerManager.notifyExplorerAddressEvent(path);
 		
-		ArrayList<RemoteFile> childFiles = getChildFilesCommand.getChildFileList();
-		if (childFiles.size() <= 0) {
-			return;
-		}
-		
+		ArrayList<RemoteFile> childFiles = device.getChildFiles(path);		
 		childFiles = sortFilesByType(childFiles);
 		for (int i = 0; i < childFiles.size(); i++) {
 			RemoteFile currentFile = childFiles.get(i);
@@ -243,8 +247,7 @@ public class ExplorerView extends JPanel implements DeviceStateListener, RemoteF
 			}
 
 			itemPanel.addRemoteFileEventListener(this);
-			explorerItemPanels.add(itemPanel);
-			fileInforPanel.add(itemPanel);
+			explorerItemView.addExplorerItem(itemPanel);
 		}
 	}
 	
@@ -270,9 +273,63 @@ public class ExplorerView extends JPanel implements DeviceStateListener, RemoteF
 				showFilesInDirectory(file.getAbsolutePath());
 			} else {
 				HLog.il("goint to read:" + file.getAbsolutePath());
-				GetFileCommand getFileCmd = new GetFileCommand(file.getAbsolutePath(), file.getName());
-				getFileCmd.exec(device);
+				String savePath = "D:/temp/" + file.getName();
+				boolean bRet = device.getFile(file.getAbsolutePath(), savePath);
+				if (!bRet) {
+					HLog.il("get file fail, file:" + file.getAbsolutePath());
+					return;
+				}
+				
+				try {
+					String cmd = "cmd  /c  start \"\" \"" + savePath + "\"";
+					HLog.il(cmd);
+					Runtime.getRuntime().exec(cmd);
+				} catch (IOException e) {
+					e.printStackTrace();
+					return;
+				}
+			}
+		} else if (event == ExplorerItemPanel.REMOTE_FILE_EVENT_POST) {
+			Clipboard sysClip = Toolkit.getDefaultToolkit().getSystemClipboard();
+	        // 获取剪切板中的内容
+	        Transferable clipTf = sysClip.getContents(null);
+	        if (clipTf == null) {
+	        	HLog.il("get contents fail");
+	        	return;
+	        }
+	        
+	        Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+			Transferable t = clipboard.getContents(null); // 获取粘贴板内数据传输对象
+			DataFlavor dataFlavors = DataFlavor.javaFileListFlavor;// 数据对象类型
+			if (!t.isDataFlavorSupported(dataFlavors)) {// 类型是否匹配为文件
+				HLog.el("unsupported flavor:" + dataFlavors);
+				return;
+			}
+		
+			try {
+				List<File> filelist = (List<File>)t.getTransferData(dataFlavors);// 拿出粘贴板内文件对象列表
+				for (int i = 0; i < filelist.size(); i++) { // 遍历文件列表并复制
+					HLog.il("file:" + filelist.get(i).getAbsolutePath());
+					String srcPath = filelist.get(i).getAbsolutePath();
+					String tagPath = file.getParentPath() + "/" + filelist.get(i).getName();
+					
+					HLog.il("srcPath:" + srcPath + ", tagPath:" + tagPath);
+					device.putFile(srcPath, tagPath);
+				}
+			} catch (Exception e) {
+				HLog.el(e);
 			}
 		}
 	}
+
+	
+	public ExplorerAddressListenerManager getExplorerAddressListenerManager() {
+		return addressListenerManager;
+	}
+	
+	public AddressBarListener getAddressBarListener() {
+		return addressBarEventHandler;
+	}
+
+
 }
