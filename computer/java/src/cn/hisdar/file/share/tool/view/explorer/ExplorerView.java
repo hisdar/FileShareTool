@@ -22,6 +22,7 @@ import com.sun.xml.internal.ws.wsdl.writer.document.http.Address;
 import cn.hisdar.file.share.tool.command.RemoteFile;
 import cn.hisdar.file.share.tool.server.Device;
 import cn.hisdar.file.share.tool.server.DeviceSearcher;
+import cn.hisdar.file.share.tool.server.DeviceStateAdapter;
 import cn.hisdar.file.share.tool.server.DeviceStateListener;
 import cn.hisdar.lib.log.HLog;
 import cn.hisdar.lib.ui.HLinearPanel;
@@ -35,16 +36,18 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 	private ExplorerTitlePanel explorerTitlePanel;
 	private String[] titles = {"名称", "修改日期", "类型", "大小"};
 	
-	private ExplorerAddressListenerManager addressListenerManager;
 	private AddressBarEventHandler addressBarEventHandler;
 	private DeviceStateEventHandler deviceStateEventHandler;
+	private ExplorerTitleEventHandler explorerTitleEventHandler;
+	private ExplorerAddressListenerManager addressListenerManager;
 
 	private FileSystemService fileSystemService;
 	
 	public ExplorerView() {
 		device = null;
-		deviceStateEventHandler = new DeviceStateEventHandler();
 		addressBarEventHandler = new AddressBarEventHandler();
+		deviceStateEventHandler = new DeviceStateEventHandler();
+		explorerTitleEventHandler = new ExplorerTitleEventHandler();
 		addressListenerManager = new ExplorerAddressListenerManager();
 		fileSystemService = new FileSystemService();
 		fileSystemService.start();
@@ -52,6 +55,8 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		setLayout(new BorderLayout());
 		
 		explorerTitlePanel = new ExplorerTitlePanel(titles);
+		explorerTitlePanel.addExplorTitleListener(explorerTitleEventHandler);
+		
 		explorerItemView = new ExplorerItemView();
 		
 		add(explorerTitlePanel, BorderLayout.NORTH);
@@ -107,20 +112,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		}
 	}
 	
-	private class DeviceStateEventHandler implements DeviceStateListener {
-
-		@Override
-		public void deviceOnline(Device dev) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void deviceOffline(Device dev) {
-			// TODO Auto-generated method stub
-			
-		}
-		
+	private class DeviceStateEventHandler extends DeviceStateAdapter {
 		@Override
 		public void deviceConnected(Device dev) {
 			HLog.il("deviceConnected");
@@ -137,7 +129,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		@Override
 		public void deviceDisconnected(Device dev) {
 			if (device == dev) {
-				clearView();
+				explorerItemView.removeAllExplorerItem();
 				device = null;
 			}
 		}
@@ -203,10 +195,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		return newFileList;
 	}
 
-	private void clearView() {
-		explorerItemView.removeAllExplorerItem();
-	}
-	
 	private void showFilesInDirectory(String path) {
 
 		if (device == null) {
@@ -214,7 +202,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			return;
 		}
 
-		clearView();
+		explorerItemView.removeAllExplorerItem();
 		addressListenerManager.notifyExplorerAddressEvent(path);
 		
 		ArrayList<RemoteFile> childFiles = device.getChildFiles(path);		
@@ -238,7 +226,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			itemPanel.setItemText(fileName, 0);
 			itemPanel.setIcon(childFiles.get(i).getIcon());
 			itemPanel.setItemText(currentFile.getLastModifiedString(), 1);
-			itemPanel.setItemText(getSize(currentFile.getLength()), 3);
+			itemPanel.setItemText(currentFile.getSizeString(), 3);
 			
 			if (childFiles.get(i).isDirectory()) {
 				itemPanel.setItemText("文件夹", 2);
@@ -249,21 +237,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			itemPanel.addRemoteFileEventListener(this);
 			explorerItemView.addExplorerItem(itemPanel);
 		}
-	}
-	
-	private String getSize(long size) {
-		String unitArray[] = {"B", "K", "M", "G", "T", "P"};
-
-		int index = 0;
-		double result = size;
-		while (result > 1024) {
-			index++;
-			result = result / 1024;
-		}
-		
-		result = ((int)(result * 10) / 10.0);
-		String sizeString = (result + " " + unitArray[index]);
-		return sizeString;
 	}
 	
 	@Override
@@ -291,7 +264,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			}
 		} else if (event == ExplorerItemPanel.REMOTE_FILE_EVENT_POST) {
 			Clipboard sysClip = Toolkit.getDefaultToolkit().getSystemClipboard();
-	        // 获取剪切板中的内容
 	        Transferable clipTf = sysClip.getContents(null);
 	        if (clipTf == null) {
 	        	HLog.il("get contents fail");
@@ -330,6 +302,18 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 	public AddressBarListener getAddressBarListener() {
 		return addressBarEventHandler;
 	}
+	
+	private class ExplorerTitleEventHandler implements ExplorerTitleEventListener {
 
+		@Override
+		public void setColumnSize(int[] columnWidthArray) {
+			explorerItemView.setColumnWidth(columnWidthArray);
+		}
+
+		@Override
+		public void autoSetColumnSize(int columnNumber) {
+			HLog.il("auto resize column");
+		}
+	}
 
 }

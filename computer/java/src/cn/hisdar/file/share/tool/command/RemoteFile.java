@@ -8,6 +8,8 @@ import java.util.Date;
 import javax.swing.Icon;
 import javax.swing.filechooser.FileSystemView;
 
+import cn.hisdar.file.share.tool.Global;
+
 public class RemoteFile {
 
     private String FILE_TYPE_FILE      = "File";
@@ -146,10 +148,8 @@ public class RemoteFile {
 		
 		File file;
 		try {
-
 			file = File.createTempFile("icon", fileName);
-			FileSystemView view = FileSystemView.getFileSystemView();
-			Icon smallIcon = view.getSystemIcon(file);
+			Icon smallIcon = Global.getFileSystemView().getSystemIcon(file);
 			//ShellFolder shellFolder = ShellFolder.getShellFolder(file);
 			//Icon bigIcon = new ImageIcon(shellFolder.getIcon(true));
 			file.delete();
@@ -159,5 +159,20 @@ public class RemoteFile {
 		}
 	      
 		return null;
+	}
+	
+	public String getSizeString() {
+		String unitArray[] = {"B", "K", "M", "G", "T", "P"};
+
+		int index = 0;
+		double result = length;
+		while (result > 1024) {
+			index++;
+			result = result / 1024;
+		}
+		
+		result = ((int)(result * 10) / 10.0);
+		String sizeString = (result + " " + unitArray[index]);
+		return sizeString;
 	}
 }

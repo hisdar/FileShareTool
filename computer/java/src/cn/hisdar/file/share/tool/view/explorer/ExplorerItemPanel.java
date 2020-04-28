@@ -176,6 +176,11 @@ public class ExplorerItemPanel extends JPanel {
 		titleLabels.get(0).setIcon(icon);
 	}
 	
+	public void setColumnWidth(int[] columnWidthArray) {
+		titleLableSizeArray = columnWidthArray;
+		repaint();
+	}
+	
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);

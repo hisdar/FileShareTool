@@ -25,6 +25,8 @@ public class main {
 			e.printStackTrace();
 		}
 		
+		Global.getFileSystemView();
+		
 		MainFrame mainFrame = new MainFrame();
 		mainFrame.setVisible(true);
 	}

@@ -56,7 +56,7 @@ public class DividerLabel extends JLabel {
 		dividerLabelListeners.add(l);
 	}
 	
-	public void deleteDividerLabelListener(DividerLabelListener l) {
+	public void removeDividerLabelListener(DividerLabelListener l) {
 		for (int i = 0; i < dividerLabelListeners.size(); i++) {
 			if (dividerLabelListeners.get(i) == l) {
 				dividerLabelListeners.remove(i);

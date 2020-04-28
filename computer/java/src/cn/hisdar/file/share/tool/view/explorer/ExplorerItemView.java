@@ -42,6 +42,12 @@ public class ExplorerItemView extends JPanel {
 			explorerItemPanels.remove(i - 1);
 		}
 	}
+	
+	public void setColumnWidth(int[] columnWidthArray) {
+		for (int i = 0; i < explorerItemPanels.size(); i++) {
+			explorerItemPanels.get(i).setColumnWidth(columnWidthArray);
+		}
+	}
 
 	@Override
 	public void paint(Graphics g) {
