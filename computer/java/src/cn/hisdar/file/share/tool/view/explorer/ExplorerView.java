@@ -14,18 +14,12 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
-import javax.swing.JScrollPane;
-
-import com.sun.xml.internal.ws.wsdl.writer.document.http.Address;
 
 import cn.hisdar.file.share.tool.command.RemoteFile;
 import cn.hisdar.file.share.tool.server.Device;
 import cn.hisdar.file.share.tool.server.DeviceSearcher;
 import cn.hisdar.file.share.tool.server.DeviceStateAdapter;
-import cn.hisdar.file.share.tool.server.DeviceStateListener;
 import cn.hisdar.lib.log.HLog;
-import cn.hisdar.lib.ui.HLinearPanel;
 
 public class ExplorerView extends JPanel implements RemoteFileEventListener {
 
@@ -40,8 +34,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 	private DeviceStateEventHandler deviceStateEventHandler;
 	private ExplorerTitleEventHandler explorerTitleEventHandler;
 	private ExplorerAddressListenerManager addressListenerManager;
-
-	private FileSystemService fileSystemService;
 	
 	public ExplorerView() {
 		device = null;
@@ -49,8 +41,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		deviceStateEventHandler = new DeviceStateEventHandler();
 		explorerTitleEventHandler = new ExplorerTitleEventHandler();
 		addressListenerManager = new ExplorerAddressListenerManager();
-		fileSystemService = new FileSystemService();
-		fileSystemService.start();
 
 		setLayout(new BorderLayout());
 		
@@ -63,48 +53,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		add(explorerItemView, BorderLayout.CENTER);
 		DeviceSearcher.getInstance().addDeviceStateListener(deviceStateEventHandler);
 	}
-	
-	private class InnerCommand {
-		
-		public static final int COMMAND_SHOW_SDCARDS = 1;
-		
-		public int command;
-		public Object object;
-	}
-	
-	private class FileSystemService extends Thread {
-		
-		private boolean exit;
-		private ArrayList<InnerCommand> commandList;
 
-		public FileSystemService() {
-			exit = false;
-			commandList = new ArrayList<>();
-		}
-		
-		public void addCommand(InnerCommand cmd) {
-			commandList.add(cmd);
-		}
-		
-		public void run() {
-			while (!exit) {
-				if (commandList.size() <= 0) {
-					try {
-						sleep(1000 * 60);
-					} catch (InterruptedException e) {}
-					continue;
-				}
-				
-				InnerCommand cmd = commandList.get(0);
-				commandList.remove(0);
-				
-				if (cmd.command == InnerCommand.COMMAND_SHOW_SDCARDS) {					
-					showSDCardInfo();
-				}
-			}
-		}
-	}
-	
 	private class AddressBarEventHandler implements AddressBarListener {
 		@Override
 		public void updateAddress(String path) {
@@ -118,11 +67,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			HLog.il("deviceConnected");
 			if (device == null) {
 				device = dev;
-				
-				InnerCommand command = new InnerCommand();
-				command.command = InnerCommand.COMMAND_SHOW_SDCARDS;
-				fileSystemService.addCommand(command);
-				fileSystemService.interrupt();
+				showFilesInDirectory(dev.getDeviceInformation().getInnerSDCardPath());
 			}
 		}
 
@@ -132,17 +77,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 				explorerItemView.removeAllExplorerItem();
 				device = null;
 			}
-		}
-	}
-	
-	private void showSDCardInfo() {
-		if (device == null) {
-			return;
-		}
-		
-		String sdcardPath = device.getDeviceInformation().getInnerSDCardPath();
-		if (sdcardPath != null) {
-			showFilesInDirectory(sdcardPath);
 		}
 	}
 	
@@ -190,12 +124,18 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		newFileList.addAll(sortFilesByName(directorys));
 		Iterator<Entry<String, ArrayList<RemoteFile>>> itr = fileTypeMap.entrySet().iterator();
 		while (itr.hasNext()) {
-			newFileList.addAll(sortFilesByName(itr.next().getValue()));
+			ArrayList<RemoteFile> subFileList = itr.next().getValue();
+			newFileList.addAll(sortFilesByName(subFileList));
 		}
+		
+		for (int i = 0; i < newFileList.size(); i++) {
+			HLog.il(newFileList.get(i).getAbsolutePath());
+		}
+
 		return newFileList;
 	}
 
-	private void showFilesInDirectory(String path) {
+	synchronized private void showFilesInDirectory(String path) {
 
 		if (device == null) {
 			HLog.il("device is null");
@@ -205,10 +145,11 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		explorerItemView.removeAllExplorerItem();
 		addressListenerManager.notifyExplorerAddressEvent(path);
 		
-		ArrayList<RemoteFile> childFiles = device.getChildFiles(path);		
-		childFiles = sortFilesByType(childFiles);
+		ArrayList<RemoteFile> childFilesTemp = device.getChildFiles(path);
+		ArrayList<RemoteFile> childFiles = sortFilesByType(childFilesTemp);
 		for (int i = 0; i < childFiles.size(); i++) {
 			RemoteFile currentFile = childFiles.get(i);
+			
 			String fileName = currentFile.getName();
 			String filePath = path + "/" + fileName;
 			if (fileName.startsWith(".")) {
@@ -224,11 +165,11 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			itemPanel.setRemoteFile(currentFile);
 			
 			itemPanel.setItemText(fileName, 0);
-			itemPanel.setIcon(childFiles.get(i).getIcon());
+			itemPanel.setIcon(currentFile.getIcon());
 			itemPanel.setItemText(currentFile.getLastModifiedString(), 1);
 			itemPanel.setItemText(currentFile.getSizeString(), 3);
 			
-			if (childFiles.get(i).isDirectory()) {
+			if (currentFile.isDirectory()) {
 				itemPanel.setItemText("ÎÄ¼þ¼Ð", 2);
 			} else {
 				itemPanel.setItemText(currentFile.getFileTypeString(), 2);
@@ -237,6 +178,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			itemPanel.addRemoteFileEventListener(this);
 			explorerItemView.addExplorerItem(itemPanel);
 		}
+		
 	}
 	
 	@Override

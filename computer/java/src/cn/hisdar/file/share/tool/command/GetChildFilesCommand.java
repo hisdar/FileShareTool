@@ -26,6 +26,7 @@ public class GetChildFilesCommand extends Command {
 	}
 	
 	public ArrayList<RemoteFile> parseChileFiles(Command result) {
+		
 		ArrayList<RemoteFile> childFileList = new ArrayList<>();
 		String childFiles = result.getCommandItem("ChildFiles");
 		

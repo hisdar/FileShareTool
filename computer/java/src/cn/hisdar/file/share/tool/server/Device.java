@@ -65,8 +65,7 @@ public class Device {
 		GetChildFilesCommand getChildFilesCommand = new GetChildFilesCommand(parentPath);
 		Command result = writeAndWaitResponse(getChildFilesCommand);
 		
-		ArrayList<RemoteFile> childFiles = getChildFilesCommand.parseChileFiles(result);
-		return childFiles;
+		return getChildFilesCommand.parseChileFiles(result);
 	}
 	
 	private void initDeviceInformation() {
