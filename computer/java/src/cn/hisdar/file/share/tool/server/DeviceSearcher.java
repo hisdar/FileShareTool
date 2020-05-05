@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
 
+import cn.hisdar.file.share.tool.command.Command;
 import cn.hisdar.lib.configuration.ConfigItem;
 import cn.hisdar.lib.configuration.HConfig;
 import cn.hisdar.lib.log.HLog;
@@ -17,6 +18,8 @@ import cn.hisdar.lib.log.HLog;
 public class DeviceSearcher {
 
 	private static DeviceSearcher serverSeacher; 
+	
+	private final static int BroadcastMessagePort = 5298;
 
 	private int threadCount;
 	private ArrayList<String> priorIPs;
@@ -374,6 +377,33 @@ public class DeviceSearcher {
 		}
 	}
 
+	
+	private String getNetworkDomain(String ipAddress) {
+		String[] ipItems = ipAddress.split("[.]");
+		if (ipItems.length != 4) {
+			return null;
+		}
+		
+		int[] ipItemsInt = new int[4];
+		try {
+			for (int i = 0; i < ipItems.length; i++) {
+				ipItemsInt[i] = Integer.parseInt(ipItems[i]);
+			}
+		} catch (NumberFormatException e) {
+			return null;
+		}
+		
+		if (ipItemsInt[0] >= 1 && ipItemsInt[0] <= 126) {
+			return ipItems[0];
+		} else if (ipItemsInt[0] >= 127 && ipItemsInt[0] <= 191) {
+			return ipItems[0] + "." + ipItems[1];
+		} else if (ipItemsInt[0] >= 192 && ipItemsInt[0] <= 223) {
+			return ipItems[0] + "." + ipItems[1] + "." + ipItems[2];
+		}
+		
+		return null;
+	}
+	
 	private class RemoteDeviceListener extends Thread {
 		private boolean exit;
 		
@@ -385,18 +415,75 @@ public class DeviceSearcher {
 			exit = true;
 		}
 		
+		private void responseLetMeHearYou(Command cmd) {
+			String ipAddress = cmd.getCommandItem("IPAddress");
+			String netWorkDomain = getNetworkDomain(ipAddress);
+			ArrayList<String> localIps = getLocalIps();
+			
+			String localIp = null;
+			for (int i = 0; i < localIps.size(); i++) {
+				if (localIps.get(i).startsWith(netWorkDomain)) {
+					localIp = localIps.get(i);
+				}
+			}
+			
+			// not ip address found
+			if (localIp == null) {
+				return;
+			}
+			
+			String cmdStr = Command.getFormatedCommandType(Command.COMMAND_TYPE_RESOPNSE);
+			cmdStr += Command.getFormatedCommand(cmd.getCommand());
+			cmdStr += "<IPAddress>" + localIp + "</IPAddress>\n";
+			cmdStr = Command.addCommandHeadAndTail(cmdStr);
+			
+			HLog.il(cmdStr);
+			
+			byte[] msgBytes = cmdStr.getBytes();
+			try {
+				InetAddress inetAddress = InetAddress.getByName(ipAddress);
+	            DatagramPacket packet = new DatagramPacket(msgBytes, msgBytes.length, inetAddress, 5298);
+	            DatagramSocket socket = new DatagramSocket();
+	            socket.send(packet);
+	            socket.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		private void parseBroadcastMessage(byte[] msgArray) {
+			String msgStr = new String(msgArray, StandardCharsets.UTF_8);
+
+			Command command = new Command();
+			command.parseCommand(new StringBuffer(msgStr));
+			msgStr = command.getCommandItem(Command.COMMAND_SHELL);
+			if (msgStr == null) {
+				// not my message ignore
+				return;
+			}
+			
+			command.clear();
+			command.parseCommand(new StringBuffer(msgStr));
+			String cmdType = command.getCommandItem(Command.COMMAND_TYPE_KEY);
+			if (cmdType.equals(Command.COMMAND_TYPE_REQUEST)) {
+				if (command.getCommand().equals(Command.COMMAND_LET_ME_HEAR_YOU)) {
+					responseLetMeHearYou(command);
+				}
+			} else if (cmdType.equals(Command.COMMAND_TYPE_RESOPNSE)) {
+				
+			}
+		}
+		
 		public void run() {
 			try {
-				DatagramSocket serverSocket = new DatagramSocket(5298);
-		        byte[] arr = new byte[1024 * 8];
+				exit = false;
+				byte[] arr = new byte[1024 * 8];
+				DatagramSocket serverSocket = new DatagramSocket(BroadcastMessagePort);
 		        DatagramPacket packet = new DatagramPacket(arr, arr.length);
-		        exit = false;
+		        
 		        while (!exit) {
 			        serverSocket.receive(packet);
-			     
-			        byte[] arr1 = packet.getData();
-			        HLog.il(new String(arr1, StandardCharsets.UTF_8));
-		        
+			        parseBroadcastMessage(packet.getData());
 		        }
 		        serverSocket.close();
 			} catch (SocketException e) {

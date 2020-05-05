@@ -9,7 +9,13 @@ import cn.hisdar.lib.log.HLog;
 public class Command {
 	public final static int COMMAND_ERROR_IO = 0x4001;
 
+	public final static String COMMAND_SHELL = "HisdarSocketCommand";
+	public final static String COMMAND_SHELL_TAG_BEGIN = "<" + COMMAND_SHELL +">";
+	public final static String COMMAND_SHELL_TAG_END   = "</" + COMMAND_SHELL + ">";
+	
 	private HashMap<String, String> cmdItems;
+	
+	public static String COMMAND_TYPE_KEY    = "CommandType";
 	
 	public static String COMMAND_TYPE_REQUEST = "Request";
 	public static String COMMAND_TYPE_RESOPNSE = "Response";
@@ -18,22 +24,25 @@ public class Command {
 	public static String COMMAND_GET_CHILD_FILES = "GetChildFiles";
 	public static String COMMAND_GET_FILE        = "GetFile";
 	public static String COMMAND_PUT_FILE        = "PutFile";
+	public static String COMMAND_LET_ME_HEAR_YOU = "LetMeHearYou";
 	
 	public Command() {
 		cmdItems = new HashMap<>();
 	}
 	
-	protected String addCommandHeadAndTail(String commandData) {
-		String result = "<HisdarSocketCommand>\n" + commandData + "</HisdarSocketCommand>\n";
+	public static String addCommandHeadAndTail(String commandData) {
+		String result = COMMAND_SHELL_TAG_BEGIN +"\n" +
+	                    commandData +
+	                    COMMAND_SHELL_TAG_END + "\n";
 		return result;
 	}
 	
-	protected String getFormatedCommandType(String commandType) {
+	public static String getFormatedCommandType(String commandType) {
 		String result = "<CommandType>" + commandType + "</CommandType>\n";
 		return result;
 	}
 	
-	protected String getFormatedCommand(String command) {
+	public static String getFormatedCommand(String command) {
 		String result = "<Command>" + command + "</Command>\n";
 		return result;
 	}
@@ -73,6 +82,10 @@ public class Command {
         }
         
         return true;
+	}
+	
+	public void clear() {
+		cmdItems.clear();
 	}
 	
     public String getCommandItem(String key) {

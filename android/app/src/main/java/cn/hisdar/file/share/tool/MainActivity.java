@@ -7,27 +7,36 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
-import java.io.File;
-
+import cn.hisdar.file.share.tool.common.FileShareTimer;
+import cn.hisdar.file.share.tool.common.FileShareTimerAdapter;
 import cn.hisdar.file.share.tool.service.FileShareService;
 
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
-    private Button searchButton;
     private static String TAG = "FileShareTool";
+
+    private final static long REMOTE_SEARCH_TOTAL_TIME = 20000;
+    private final static int  REMOTE_SEARCH_TIME_STEP  = 1000;
+
+    private Button searchButton;
+    private boolean isLookingForRemotes;
+    private FileShareTimer remoteSearchTimer;
     private LocalBroadcastManager localBroadcastManager;
+    private RemoteSearchTimerEventHandler remoteSearchTimerEventHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         localBroadcastManager = LocalBroadcastManager.getInstance(getApplicationContext());
+
+        isLookingForRemotes = false;
         searchButton = findViewById(R.id.search_master_button);
         searchButton.setOnClickListener(this);
 
@@ -35,25 +44,51 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         startService(intent);
     }
 
+    public void stopSearchRemotes() {
+        isLookingForRemotes = false;
+        searchButton.setText("搜索");
+        Intent intent = new Intent();
+        intent.setAction(FileShareService.ACTION_STOP_GET_REMOTES_LIST);
+        localBroadcastManager.sendBroadcast(intent);
+    }
+
     @Override
     public void onClick(View v) {
         if (v.getId() == searchButton.getId()) {
+            if (!isLookingForRemotes) {
+                Log.i(TAG, "start search remotes");
+                isLookingForRemotes = true;
+                searchButton.setText("停止搜索");
+                Intent intent = new Intent();
+                intent.setAction(FileShareService.ACTION_START_GET_REMOTES_LIST);
+                localBroadcastManager.sendBroadcast(intent);
 
-            File file = Environment.getExternalStorageDirectory();
-            File[] childFiles = file.listFiles();
-            if (childFiles != null) {
-                for (int i = 0; i < childFiles.length; i++) {
-                    Log.i(TAG, childFiles[i].getPath() + "\n");
-                }
+                remoteSearchTimer = new FileShareTimer(REMOTE_SEARCH_TOTAL_TIME, REMOTE_SEARCH_TIME_STEP);
+                remoteSearchTimerEventHandler = new RemoteSearchTimerEventHandler();
+                remoteSearchTimer.addListener(remoteSearchTimerEventHandler);
+                remoteSearchTimer.startTimer();
             } else {
-                Log.i(TAG, "get child files fail");
+                Log.i(TAG, "stop search remotes");
+                remoteSearchTimer.stopTimer();
+            }
+        }
+    }
+
+    private class RemoteSearchTimerEventHandler extends FileShareTimerAdapter {
+        @Override
+        public void timerStepEvent(int step) {
+            if (step * REMOTE_SEARCH_TIME_STEP == REMOTE_SEARCH_TOTAL_TIME) {
+                stopSearchRemotes();
+                return;
             }
 
-            Log.i(TAG, "send message:" + FileShareService.ACTION_GET_MASTER_LIST);
-            Intent intent = new Intent();
-            intent.setAction(FileShareService.ACTION_GET_MASTER_LIST);
-            intent.putExtra("change", "yes");
-            localBroadcastManager.sendBroadcast(intent);
+            int leftStep = (int)(REMOTE_SEARCH_TOTAL_TIME / REMOTE_SEARCH_TIME_STEP) - step;
+            searchButton.setText("停止搜索(" + leftStep + ")");
+        }
+
+        @Override
+        public void timerDone() {
+            stopSearchRemotes();
         }
     }
 

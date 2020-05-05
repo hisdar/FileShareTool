@@ -6,6 +6,10 @@ import java.util.HashMap;
 
 public class Command {
 
+    public final static String COMMAND_SHELL = "HisdarSocketCommand";
+    public final static String COMMAND_SHELL_TAG_BEGIN = "<" + COMMAND_SHELL +">";
+    public final static String COMMAND_SHELL_TAG_END   = "</" + COMMAND_SHELL + ">";
+
     public static String COMMAND_EXEC_RESULT_SUCCESS = "<Result>Success</Result>\n";
     public static String COMMAND_EXEC_RESULT_FAIL    = "<Result>Fail</Result>\n";
 
@@ -19,6 +23,7 @@ public class Command {
     public static String COMMAND_GET_CHILD_FILES = "GetChildFiles";
     public static String COMMAND_GET_FILE        = "GetFile";
     public static String COMMAND_PUT_FILE        = "PutFile";
+    public static String COMMAND_LET_ME_HEAR_YOU = "LetMeHearYou";
 
     private String TAG = "FileShareCommand";
     private HashMap<String, String> cmdItems;
@@ -72,19 +77,22 @@ public class Command {
         return true;
     }
 
-
-    public String addCommandHeadAndTail(String commandData) {
+    public static String addCommandHeadAndTail(String commandData) {
         String result = "<HisdarSocketCommand>\n" + commandData + "</HisdarSocketCommand>\n";
         return result;
     }
 
-    public String getFormatedCommandType(String commandType) {
+    public static String getFormatedCommandType(String commandType) {
         String result = "<CommandType>" + commandType + "</CommandType>\n";
         return result;
     }
 
-    public String getFormatedCommand(String command) {
+    public static String getFormatedCommand(String command) {
         String result = "<Command>" + command + "</Command>\n";
         return result;
+    }
+
+    public void clear() {
+        cmdItems.clear();
     }
 }

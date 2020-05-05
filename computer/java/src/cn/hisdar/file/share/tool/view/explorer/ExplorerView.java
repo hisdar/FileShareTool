@@ -48,6 +48,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 		explorerTitlePanel.addExplorTitleListener(explorerTitleEventHandler);
 		
 		explorerItemView = new ExplorerItemView();
+		explorerItemView.addRemoteFileEventListener(this);
 		
 		add(explorerTitlePanel, BorderLayout.NORTH);
 		add(explorerItemView, BorderLayout.CENTER);
@@ -128,10 +129,6 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 			newFileList.addAll(sortFilesByName(subFileList));
 		}
 		
-		for (int i = 0; i < newFileList.size(); i++) {
-			HLog.il(newFileList.get(i).getAbsolutePath());
-		}
-
 		return newFileList;
 	}
 
@@ -175,15 +172,13 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 				itemPanel.setItemText(currentFile.getFileTypeString(), 2);
 			}
 
-			itemPanel.addRemoteFileEventListener(this);
 			explorerItemView.addExplorerItem(itemPanel);
 		}
-		
 	}
 	
 	@Override
 	public void remoteFileEvent(RemoteFile file, int event) {
-		if (event == ExplorerItemPanel.REMOTE_FILE_EVENT_OPEN) {
+		if (event == ExplorerItemView.REMOTE_FILE_EVENT_OPEN) {
 			if (file.isDirectory()) {
 				showFilesInDirectory(file.getAbsolutePath());
 			} else {
@@ -204,7 +199,7 @@ public class ExplorerView extends JPanel implements RemoteFileEventListener {
 					return;
 				}
 			}
-		} else if (event == ExplorerItemPanel.REMOTE_FILE_EVENT_POST) {
+		} else if (event == ExplorerItemView.REMOTE_FILE_EVENT_POST) {
 			Clipboard sysClip = Toolkit.getDefaultToolkit().getSystemClipboard();
 	        Transferable clipTf = sysClip.getContents(null);
 	        if (clipTf == null) {

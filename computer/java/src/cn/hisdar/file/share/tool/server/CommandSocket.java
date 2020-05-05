@@ -68,14 +68,14 @@ public class CommandSocket {
                     continue;
                 }
 
-                if (!lineString.trim().equals("<HisdarSocketCommand>")) {
+                if (!lineString.trim().equals(Command.COMMAND_SHELL_TAG_BEGIN)) {
                     continue;
                 }
 
                 StringBuffer commandStringBuffer = new StringBuffer();
                 while (true) {
                     lineString = bufferedReader.readLine();
-                    if (lineString.trim().equals("</HisdarSocketCommand>")) {
+                    if (lineString.trim().equals(Command.COMMAND_SHELL_TAG_END)) {
                         break;
                     }
 

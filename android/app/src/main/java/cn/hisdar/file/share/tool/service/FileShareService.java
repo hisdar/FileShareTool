@@ -1,7 +1,5 @@
 package cn.hisdar.file.share.tool.service;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -14,22 +12,26 @@ import android.os.Looper;
 import android.os.Message;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-import android.os.SystemClock;
 import android.util.Log;
+
+import cn.hisdar.file.share.tool.common.FileShareTimer;
 
 
 public class FileShareService extends Service {
 
     private static final String TAG = "FileShareService";
-    private static final int COMMAND_START_SERVER = 0X1001;
-    private static final int COMMAND_STOP_SERVER  = 0X1002;
-    private static final int UPDATE_MASTER_LIST   = 0X1003;
-    public  static final String ACTION_GET_MASTER_LIST = "get.master.list";
-    public  static final String ACTION_UPDATE_MASTER_LIST = "update.master.list";
+    public static final int COMMAND_SEARCH_REMOTES = 0X1001;
+    public static final int COMMAND_STOP_SERVER  = 0X1002;
+    public static final int UPDATE_MASTER_LIST   = 0X1003;
+
+    public static final String ACTION_START_GET_REMOTES_LIST = "get.remotes.list.start";
+    public static final String ACTION_STOP_GET_REMOTES_LIST  = "get.remotes.list.stop";
+
+    public static final String ACTION_GET_MASTER_LIST = "get.master.list";
+    public static final String ACTION_UPDATE_MASTER_LIST = "update.master.list";
 
     private Looper mServiceLooper;
     private ServiceHandler mServiceHandler;
-
 
     private LocalBroadcastManager localBroadcastManager;
     private ServiceBroadcastReceiver serviceBroadcastReceiver;
@@ -40,19 +42,7 @@ public class FileShareService extends Service {
 
     @Override
     public void onCreate() {
-        int priority = android.os.Process.THREAD_PRIORITY_BACKGROUND;
-        HandlerThread thread = new HandlerThread("ServiceHandlerThread", priority);
-        thread.start();
 
-        // 获取工作线程的Looper
-        mServiceLooper = thread.getLooper();
-
-        // 创建工作线程的Handler
-        mServiceHandler = new ServiceHandler(mServiceLooper);
-
-        Message message = mServiceHandler.obtainMessage();
-        message.what = UPDATE_MASTER_LIST;
-        mServiceHandler.sendMessage(message);
     }
 
     @Override
@@ -61,45 +51,34 @@ public class FileShareService extends Service {
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         localBroadcastManager = LocalBroadcastManager.getInstance(getApplicationContext());
         serviceBroadcastReceiver = new ServiceBroadcastReceiver();
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(ACTION_GET_MASTER_LIST);
+        intentFilter.addAction(ACTION_START_GET_REMOTES_LIST);
+        intentFilter.addAction(ACTION_STOP_GET_REMOTES_LIST);
         localBroadcastManager.registerReceiver(serviceBroadcastReceiver, intentFilter);
-        Log.i(TAG, "onStartCommand finished");
 
+        Log.i(TAG, "onStartCommand finished");
         FileShareSocketServer socketServer = FileShareSocketServer.getInstance();
         socketServer.startServer(getApplicationContext());
         flags = START_STICKY;
         return super.onStartCommand(intent, flags, startId);
     }
 
-    @Override
-    public void onTaskRemoved(Intent rootIntent) {
-        Log.i(TAG, "onTaskRemoved");
-        Intent restartService = new Intent(getApplicationContext(), this.getClass());
-        restartService.setPackage(getPackageName());
-        PendingIntent restartServicePI = PendingIntent.getService(
-                getApplicationContext(),
-                1,
-                restartService,
-                PendingIntent.FLAG_ONE_SHOT);
-        AlarmManager alarmService = (AlarmManager)getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-        alarmService.set(AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + 1000,
-                restartServicePI);
-    }
-
     public class ServiceBroadcastReceiver  extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.i(TAG, "message:" + ACTION_GET_MASTER_LIST);
-            if (intent.getAction().equals(ACTION_GET_MASTER_LIST)) {
+            Log.i(TAG, "message:" + intent.getAction());
+            if (intent.getAction().equals(ACTION_START_GET_REMOTES_LIST)) {
 
+                return;
+            }
+
+            if (intent.getAction().equals(ACTION_STOP_GET_REMOTES_LIST)) {
+                return;
             }
         }
     }
@@ -113,7 +92,7 @@ public class FileShareService extends Service {
         public void handleMessage(Message msg) {
             Log.i(TAG, "handle message:" + msg.what);
             switch (msg.what) {
-                case COMMAND_START_SERVER:
+                case COMMAND_SEARCH_REMOTES:
                     //FileShareMaster master = new FileShareMaster();
                     //master.getMasters(getApplicationContext());
                     break;
